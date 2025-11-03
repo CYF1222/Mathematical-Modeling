@@ -73,10 +73,8 @@ cbar.set_label('高程 (米)', rotation=270, labelpad=15)
 plt.tight_layout(rect=[0, 0, 0.9, 0.95])
 plt.show()
 
-fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+fig, axes = plt.subplots(1, 2, figsize=(15, 12))
 fig.suptitle('高度≥1400的区域分析', fontsize=16, fontweight='bold')
-
-from mpl_toolkits.mplot3d import Axes3D
 
 Z_analysis = interp_results['双三次插值']
 
@@ -90,7 +88,7 @@ ax_3d.set_ylabel('Y坐标')
 ax_3d.set_zlabel('高程 (米)')
 ax_3d.set_title('三维地形图(红色为1400米等高线)')
 
-im1 = axes[0, 1].contourf(X_interp, Y_interp, Z_analysis, levels=50, cmap=cmap, norm=norm)
+im1 = axes[0].contourf(X_interp, Y_interp, Z_analysis, levels=50, cmap=cmap, norm=norm)
 cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
 cbar = plt.colorbar(im1, cax=cbar_ax)
 cbar.set_label('高程 (米)', rotation=270, labelpad=15)
