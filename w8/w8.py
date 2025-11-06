@@ -16,6 +16,7 @@ med=med.to_numpy()
 # 将数据转换为数值数组
 med=np.delete(med,[63,135,200],axis=0)
 
+#计算极差平均值
 sum=0
 for i in range(3348):
     single_light=med[:,i]
@@ -23,6 +24,7 @@ for i in range(3348):
     sum=sum+single_var
 ave_light=sum/3348
 
+#提取特征区间
 flag_start=0
 list_start=[]
 flag_finish=0
@@ -39,11 +41,14 @@ for i in range(3348):
         flag_start=0
         list_finish.append(i)
 
+#数据处理
+#x轴
 light_take=[]
 for i in range(7):
     for j in range(list_start[i],list_finish[i]+1):
         light_take.append(j+652)
 
+#去除非特征区间的值，防止出现自动填充的直线
 light_con=[]
 
 for i in range(len(light_take)-1):
@@ -53,6 +58,7 @@ for i in range(len(light_take)-1):
         light_con.append(light_take[i])
 light_con.append(light_take[-1])
 
+#绘图
 for i in range(422):
     row_data = med[i, light_take]
     plt.plot(light_con,row_data)
