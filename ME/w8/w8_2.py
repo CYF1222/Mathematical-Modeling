@@ -1,69 +1,82 @@
 import pandas as pd
+from scipy.signal import savgol_filter 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import RobustScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 import sys
 import io
 
-# 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
-plt.rcParams['axes.unicode_minus'] = False    # 解决负号显示问题
-
-# 设置标准输出编码为UTF-8
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-#读取文件并分测试训练集
+# 读取数据
 med = pd.read_excel('D:/Project/Python_VSCode/Mathematical Modeling/ME/w8/2.xlsx')
 test = med[med['OP'].isna()]
 train = med[med['OP'].notna()]
 
-#类别，特征和测试序号分开，便于处理
-train=train.drop('No',axis=1)
-no_test=test['No']
-test=test.drop('No',axis=1)
-x_train_all=train.drop('OP',axis=1)
-y_train_all=train['OP']
-x_test=test.drop('OP',axis=1)
+# 数据处理，分开训练和分类集，去除无关列
+train = train.drop('No', axis=1)
+no_test = test['No']
+test = test.drop('No', axis=1)
+x_train_all = train.drop('OP', axis=1)
+y_train_all = train['OP']
+x_test = test.drop('OP', axis=1)
 
+print(f"训练集形状: {x_train_all.shape}")
+print(f"测试集形状: {x_test.shape}")
+
+# 数据预处理
+X_train_smoothed = savgol_filter(x_train_all, window_length=15, polyorder=3, axis=1)
+X_test_smoothed = savgol_filter(x_test, window_length=15, polyorder=3, axis=1)
+
+# 标准化
+scaler = RobustScaler()
+X_train_scaled = scaler.fit_transform(X_train_smoothed)
+X_test_scaled = scaler.transform(X_test_smoothed)
+
+# 特征工程 - PCA
+pca = PCA(n_components=100)
+X_train_pca = pca.fit_transform(X_train_scaled)
+X_test_pca = pca.transform(X_test_scaled)
+
+# 数据分割
 x_train, x_val, y_train, y_val = train_test_split(
-    x_train_all, y_train_all,
-    test_size=0.2,  # 20%训练数据作为验证集（可调整比例）
-    random_state=42,  # 固定随机种子，结果可复现
-    stratify=y_train_all  # 保持类别比例（分类任务推荐）
+    X_train_pca, y_train_all,
+    test_size=0.2,
+    random_state=42,
+    stratify=y_train_all
 )
 
-#标准化
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(x_train)  # 训练集拟合并标准化
-X_val_scaled = scaler.transform(x_val)  # 验证集标准化
-X_test_scaled = scaler.transform(x_test)  # 测试集用训练集的scaler标准化
-
-
-# SVM多分类默认使用"一对多（OvR）"策略，直接处理标签
-svm_model = SVC(
-    kernel='rbf',         # 核函数：rbf（非线性数据）/linear（线性数据）
-    C=1.0,                # 正则化强度：C越大，对错误样本惩罚越重（防过拟合）
-    gamma='scale',        # 核系数：自动适配特征尺度（推荐默认）
-    probability=True      # 启用概率预测（可选，用于后续评估）
+# 模型训练 - 随机森林
+rf_model = RandomForestClassifier(
+    n_estimators=200,
+    max_depth=15,
+    min_samples_split=10,
+    min_samples_leaf=5,
+    max_features='sqrt',
+    random_state=42,
+    n_jobs=-1
 )
-svm_model.fit(X_train_scaled, y_train)  # 使用标准化后的数据训练
 
-y_val_pred = svm_model.predict(X_val_scaled)  # 验证集预测
-accuracy = accuracy_score(y_val, y_val_pred)  # 计算准确率
-print(f"模型在验证集上的准确率：{accuracy:.4f}\n")  # 输出准确率
-print("验证集分类报告：")
-print(classification_report(y_val, y_val_pred))  # 详细评估指标
+rf_model.fit(x_train, y_train)
 
-#生成测试结果
-y_pred = svm_model.predict(X_test_scaled)
+# 模型评估
+y_train_pred = rf_model.predict(x_train)
+y_val_pred = rf_model.predict(x_val)
 
-# 重置索引，便于拼接
-y_pred_series = pd.Series(y_pred, name='prediction')
-no_test_reset = no_test.reset_index(drop=True)
-y_pred_series_reset = y_pred_series.reset_index(drop=True)
+train_accuracy = accuracy_score(y_train, y_train_pred)
+val_accuracy = accuracy_score(y_val, y_val_pred)
 
-# 拼接
-result_df = pd.concat([no_test_reset, y_pred_series_reset], axis=1)
+print(f"训练集准确率: {train_accuracy:.4f}")
+print(f"验证集准确率: {val_accuracy:.4f}")
+
+# 测试集预测
+y_pred = rf_model.predict(X_test_pca)
+result_df = pd.DataFrame({
+    'No': no_test.reset_index(drop=True),
+    'prediction': y_pred
+})
+
+print("\n测试集预测结果:")
 print(result_df)
