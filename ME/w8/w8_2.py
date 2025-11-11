@@ -23,13 +23,21 @@ train = med[med['OP'].notna()]
 train=train.drop('No',axis=1)
 no_test=test['No']
 test=test.drop('No',axis=1)
-x_train=train.drop('OP',axis=1)
-y_train=train['OP']
+x_train_all=train.drop('OP',axis=1)
+y_train_all=train['OP']
 x_test=test.drop('OP',axis=1)
+
+x_train, x_val, y_train, y_val = train_test_split(
+    x_train_all, y_train_all,
+    test_size=0.2,  # 20%训练数据作为验证集（可调整比例）
+    random_state=42,  # 固定随机种子，结果可复现
+    stratify=y_train_all  # 保持类别比例（分类任务推荐）
+)
 
 #标准化
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(x_train)  # 训练集拟合并标准化
+X_val_scaled = scaler.transform(x_val)  # 验证集标准化
 X_test_scaled = scaler.transform(x_test)  # 测试集用训练集的scaler标准化
 
 
@@ -41,6 +49,12 @@ svm_model = SVC(
     probability=True      # 启用概率预测（可选，用于后续评估）
 )
 svm_model.fit(X_train_scaled, y_train)  # 使用标准化后的数据训练
+
+y_val_pred = svm_model.predict(X_val_scaled)  # 验证集预测
+accuracy = accuracy_score(y_val, y_val_pred)  # 计算准确率
+print(f"模型在验证集上的准确率：{accuracy:.4f}\n")  # 输出准确率
+print("验证集分类报告：")
+print(classification_report(y_val, y_val_pred))  # 详细评估指标
 
 #生成测试结果
 y_pred = svm_model.predict(X_test_scaled)
