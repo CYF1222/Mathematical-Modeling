@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 
 # 读取Excel文件
-med = pd.read_excel('D:/Project/Python_VSCode/Mathematical Modeling/w8/1.xlsx')
+med = pd.read_excel('D:/Project/Python_VSCode/Mathematical Modeling/ME/w8/1.xlsx')
 med=med.drop('No',axis=1)
 
 # 获取列名（light值）
@@ -66,3 +66,23 @@ for i in range(422):
 plt.xlabel('x')
 plt.ylabel('y')
 plt.show()
+
+# 提取特征区间的数据
+extracted_data = med[:, light_take]  # 形状为 (422, 886)
+
+# 创建DataFrame，行是样本，列是波长
+df = pd.DataFrame(extracted_data, columns=light_con)
+
+# 转置DataFrame，使波长成为行，样本成为列
+df_transposed = df.T
+
+# 添加样本编号作为列名
+sample_columns = [f'Sample_{i+1}' for i in range(422)]
+df_transposed.columns = sample_columns
+
+# 添加波长作为第一列
+df_transposed.insert(0, 'Wavelength', df_transposed.index)
+
+# 保存到Excel
+excel_path = 'D:/Project/Python_VSCode/Mathematical Modeling/ME/w8/output.xlsx'
+df_transposed.to_excel(excel_path, index=False)
