@@ -6,6 +6,9 @@ from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans  # 可选：自动聚类
 
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
+plt.rcParams['axes.unicode_minus'] = False    # 解决负号显示问题
+
 # ----------------------
 # 步骤1：加载数据（无标签，仅含编号和光谱）
 # ----------------------
@@ -35,7 +38,15 @@ def preprocess_spectra(spectra, window_length=15, polyorder=2, deriv=1):
     return processed
 
 processed_spectra = preprocess_spectra(spectra, deriv=1)  # 预处理后的光谱
+'''
+for i in range(422):
+    row_data = processed_spectra[i, :]
+    plt.plot(wavenumbers,row_data)
 
+plt.xlabel('x')
+plt.ylabel('y')
+plt.show()
+'''
 
 # ----------------------
 # 步骤3：UMAP降维（核心！将高维光谱映射到2D）
@@ -98,15 +109,30 @@ plt.title('UMAP + K-means Clustering (n_clusters=3)', fontsize=14)
 plt.grid(linestyle='--', alpha=0.5)
 plt.show()
 
-'''
-# ----------------------
-# 步骤6：保存UMAP结果（含样本编号和坐标）
-# ----------------------
-umap_result = pd.DataFrame({
-    '药材编号': sample_ids,
-    'UMAP_Component_1': umap_2d[:, 0],
-    'UMAP_Component_2': umap_2d[:, 1],
-    'KMeans_Cluster': clusters  # 若执行了K-means
-})
-umap_result.to_csv('herb_umap_result.csv', index=False)
-print("UMAP降维结果已保存至 herb_umap_result.csv")'''
+# 1. 获取聚类结果（假设已执行步骤5，clusters为长度=样本数的数组，值为0/1/2等簇编号）
+n_clusters = len(np.unique(clusters))  # 自动获取簇数量（无需硬编码）
+colors = plt.cm.viridis(np.linspace(0, 1, n_clusters))  # 为每个簇分配颜色（从viridis色图中取）
+
+plt.figure(figsize=(12, 7))  # 更大的画布，避免曲线重叠
+
+# 2. 按簇分组绘制光谱
+for cluster_id in range(n_clusters):
+    # 筛选当前簇的所有样本索引（例如：簇0的样本索引）
+    cluster_indices = np.where(clusters == cluster_id)[0]
+    # 遍历当前簇的每个样本，用同一颜色绘制
+    for i in cluster_indices:
+        row_data = spectra[i, :]  # 第i个样本的光谱数据
+        plt.plot(wavenumbers, row_data, linewidth=0.5, alpha=0.6, color=colors[cluster_id])
+
+# 3. 添加图例、标签和标题
+plt.xlabel('波数 (cm⁻¹)', fontsize=12)
+plt.ylabel('预处理后吸光度 (导数+标准化)', fontsize=12)
+plt.title(f'按K-means聚类结果分组的光谱曲线 (n_clusters={n_clusters})', fontsize=14)
+plt.grid(linestyle='--', alpha=0.5)
+
+# 添加图例（每个簇对应一种颜色）
+handles = [plt.Line2D([0], [0], color=colors[i], label=f'簇 {i}') for i in range(n_clusters)]
+plt.legend(handles=handles, title='聚类标签', bbox_to_anchor=(1.05, 1), loc='upper left')  # 图例放在右侧
+
+plt.tight_layout()  # 自动调整布局，避免标签被截断
+plt.show()
