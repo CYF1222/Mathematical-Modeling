@@ -67,22 +67,16 @@ plt.xlabel('x')
 plt.ylabel('y')
 plt.show()
 
-# 提取特征区间的数据
-extracted_data = med[:, light_take]  # 形状为 (422, 886)
+# 提取特征区间数据（样本×特征波长）：将波长值转为原列索引（w-652）
+extracted_data = med[:, [w-652 for w in light_take]]  # 形状：(422样本, 886特征波长)
 
-# 创建DataFrame，行是样本，列是波长
-df = pd.DataFrame(extracted_data, columns=light_con)
+# 创建DataFrame：样本为行，波数为列（直接使用light_take作为列名，即波数值）
+df = pd.DataFrame(extracted_data, columns=light_take)  # 形状：(422样本, 886波数)
 
-# 转置DataFrame，使波长成为行，样本成为列
-df_transposed = df.T
+# 添加样本标识列（作为第一列，明确每行对应哪个样本）
+df.insert(0, 'Sample_ID', [f'Sample_{i+1}' for i in range(422)])  # 新增列：Sample_1~Sample_422
 
-# 添加样本编号作为列名
-sample_columns = [f'Sample_{i+1}' for i in range(422)]
-df_transposed.columns = sample_columns
-
-# 添加波长作为第一列
-df_transposed.insert(0, 'Wavelength', df_transposed.index)
-
-# 保存到Excel
-excel_path = 'D:/Project/Python_VSCode/Mathematical Modeling/ME/w8/output.xlsx'
-df_transposed.to_excel(excel_path, index=False)
+# 保存到Excel（无需转置，直接保存原始DataFrame）
+excel_path = 'D:/Project/Python_VSCode/Mathematical Modeling/ME/w8/output_wavelength_as_columns.xlsx'
+df.to_excel(excel_path, index=False)  # index=False：不保存默认行号
+print(f"数据已保存至：{excel_path}，结构：样本（行）× 波数（列）")
